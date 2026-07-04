@@ -1,12 +1,39 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, Phone, MapPin, Send } from 'lucide-react'
+import { validateEmail, validateName, validateMessage, sanitizeString, createRateLimiter } from '../utils/helpers'
+
+const rateLimiter = createRateLimiter(5, 60000)
 
 export default function Contact() {
   const [submitted, setSubmitted] = useState(false)
+  const [errors, setErrors] = useState({})
+  const formRef = useRef(null)
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    const form = formRef.current
+    if (!form) return
+
+    const firstName = sanitizeString(form.firstName.value)
+    const lastName = sanitizeString(form.lastName.value)
+    const email = sanitizeString(form.email.value)
+    const message = sanitizeString(form.message.value)
+
+    if (!rateLimiter(email)) {
+      setErrors({ form: 'Too many submissions. Please try again later.' })
+      return
+    }
+
+    const newErrors = {}
+    if (!validateName(firstName)) newErrors.firstName = true
+    if (!validateName(lastName)) newErrors.lastName = true
+    if (!validateEmail(email)) newErrors.email = true
+    if (!validateMessage(message)) newErrors.message = true
+
+    setErrors(newErrors)
+    if (Object.keys(newErrors).length > 0) return
+
     setSubmitted(true)
   }
 
@@ -43,39 +70,56 @@ export default function Contact() {
                   <p className="text-green-600 dark:text-green-400 font-medium">Thanks for reaching out! We will get back to you within 24 hours.</p>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} ref={formRef} className="space-y-4" noValidate>
+                  {errors.form && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                      <p className="text-red-600 dark:text-red-400 text-sm">{errors.form}</p>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="firstName">First Name</label>
                       <input
+                        id="firstName"
+                        name="firstName"
                         type="text"
                         required
-                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-black text-gray-900 dark:text-white rounded-lg text-sm outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
+                        maxLength={100}
+                        className={`w-full px-4 py-3 border bg-white dark:bg-black text-gray-900 dark:text-white rounded-lg text-sm outline-none focus:ring-1 focus:ring-black dark:focus:ring-white ${errors.firstName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="lastName">Last Name</label>
                       <input
+                        id="lastName"
+                        name="lastName"
                         type="text"
                         required
-                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-black text-gray-900 dark:text-white rounded-lg text-sm outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
+                        maxLength={100}
+                        className={`w-full px-4 py-3 border bg-white dark:bg-black text-gray-900 dark:text-white rounded-lg text-sm outline-none focus:ring-1 focus:ring-black dark:focus:ring-white ${errors.lastName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="email">Email</label>
                     <input
+                      id="email"
+                      name="email"
                       type="email"
                       required
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-black text-gray-900 dark:text-white rounded-lg text-sm outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
+                      maxLength={254}
+                      className={`w-full px-4 py-3 border bg-white dark:bg-black text-gray-900 dark:text-white rounded-lg text-sm outline-none focus:ring-1 focus:ring-black dark:focus:ring-white ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="message">Message</label>
                     <textarea
+                      id="message"
+                      name="message"
                       required
                       rows={5}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-black text-gray-900 dark:text-white rounded-lg text-sm outline-none focus:ring-1 focus:ring-black dark:focus:ring-white resize-none"
+                      maxLength={5000}
+                      className={`w-full px-4 py-3 border bg-white dark:bg-black text-gray-900 dark:text-white rounded-lg text-sm outline-none focus:ring-1 focus:ring-black dark:focus:ring-white resize-none ${errors.message ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                     />
                   </div>
                   <button

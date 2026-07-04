@@ -1,17 +1,29 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 const ThemeContext = createContext()
+const STORAGE_KEY = 'brother-theme'
+
+function loadTheme() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored === 'dark') return true
+    if (stored === 'light') return false
+  } catch {
+    /* localStorage unavailable */
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
 
 export function ThemeProvider({ children }) {
-  const [dark, setDark] = useState(() => {
-    const stored = localStorage.getItem('brother-theme')
-    if (stored) return stored === 'dark'
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-  })
+  const [dark, setDark] = useState(loadTheme)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
-    localStorage.setItem('brother-theme', dark ? 'dark' : 'light')
+    try {
+      localStorage.setItem(STORAGE_KEY, dark ? 'dark' : 'light')
+    } catch {
+      /* Storage full or unavailable */
+    }
   }, [dark])
 
   return (
